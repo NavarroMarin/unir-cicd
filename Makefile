@@ -33,39 +33,35 @@ test-e2e:
 	-docker rm --force e2e-tests
 	docker run -d --network calc-test-e2e --env PYTHONPATH=/opt/calc --name apiserver --env FLASK_APP=app/api.py -p 5000:5000 -w /opt/calc calculator-app:latest flask run --host=0.0.0.0
 	docker run -d --network calc-test-e2e --name calc-web -p 80:80 calc-web
-	docker create --network calc-test-e2e --name e2e-tests \
-		-v $(shell pwd)/results:/results \
-		cypress/included:4.9.0 \
-		--browser chrome \
-		--reporter junit \
-		--reporter-options "mochaFile=/results/e2e_result.xml"
+	docker create --network calc-test-e2e --name e2e-tests -v ${PWD}/results:/results cypress/included:4.9.0 --browser chrome --reporter junit --reporter-options "mochaFile=/results/e2e_result.xml"
 	docker cp ./test/e2e/cypress.json e2e-tests:/cypress.json
 	docker cp ./test/e2e/cypress e2e-tests:/cypress
 	-docker start -a e2e-tests
+	-docker cp e2e-tests:/results ./ || true
 	-docker rm --force apiserver
 	-docker rm --force calc-web
 	-docker rm --force e2e-tests
 	-docker network rm calc-test-e2e
 
 run-web:
-	docker run --rm --volume `pwd`/web:/usr/share/nginx/html --volume `pwd`/web/constants.local.js:/usr/share/nginx/html/constants.js --name calc-web -p 80:80 nginx
+	docker run --rm --volume ${PWD}/web:/usr/share/nginx/html --volume ${PWD}/web/constants.local.js:/usr/share/nginx/html/constants.js --name calc-web -p 80:80 nginx
 
 stop-web:
 	-docker stop calc-web
 
 start-sonar-server:
 	-docker network create calc-sonar
-	docker run -d --rm --stop-timeout 60 --network calc-sonar --name sonarqube-server -p 9000:9000 --volume `pwd`/sonar/data:/opt/sonarqube/data --volume `pwd`/sonar/logs:/opt/sonarqube/logs sonarqube:8.3.1-community
+	docker run -d --rm --stop-timeout 60 --network calc-sonar --name sonarqube-server -p 9000:9000 --volume ${PWD}/sonar/data:/opt/sonarqube/data --volume ${PWD}/sonar/logs:/opt/sonarqube/logs sonarqube:8.3.1-community
 
 stop-sonar-server:
 	-docker stop sonarqube-server
 	-docker network rm calc-sonar
 
 start-sonar-scanner:
-	docker run --rm --network calc-sonar -v `pwd`:/usr/src sonarsource/sonar-scanner-cli
+	docker run --rm --network calc-sonar -v ${PWD}:/usr/src sonarsource/sonar-scanner-cli
 
 pylint:
-	docker run --rm --volume `pwd`:/opt/calc --env PYTHONPATH=/opt/calc -w /opt/calc calculator-app:latest pylint app/ | tee results/pylint_result.txt
+	docker run --rm --volume ${PWD}:/opt/calc --env PYTHONPATH=/opt/calc -w /opt/calc calculator-app:latest pylint app/ | tee results/pylint_result.txt
 
 deploy-stage:
 	-docker stop apiserver
